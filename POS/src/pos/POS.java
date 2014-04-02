@@ -16,7 +16,7 @@ public class POS {
 	public static void main(String args[]){
 		//if(args[]!=null)batchMode=true;
 		new POS();
-	}
+	} 
 	
 	POS(){
 		// first implement inputMode
