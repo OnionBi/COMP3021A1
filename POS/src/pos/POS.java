@@ -7,11 +7,9 @@ import java.util.Scanner;
 public class POS {
 	String name;
 	String password;
-	String[] userList;
-	String[] passwordList;
 	static boolean batchMode = false;
-	Scanner userScanner;
 	Scanner inputScanner;
+	UserList ul;
 	
 	public static void main(String args[]){
 		//if(args[]!=null)batchMode=true;
@@ -19,35 +17,79 @@ public class POS {
 	} 
 	
 	POS(){
-		// first implement inputMode
 		inputScanner = new Scanner(System.in);
-		try {
-			userScanner = new Scanner(new File("userPasswordFile.txt"));
-		} catch (FileNotFoundException e) {
-			System.out.println("not find");
-		}
-		int noOfLine = 0;
-		while(userScanner.hasNextLine()){
-			noOfLine++;
-			System.out.println(userScanner.nextLine());
-		}
-		System.out.println(noOfLine);
-		//userList = new String[10];
-		//passwordList = new String[10];
-		//registration();
+		ul = new UserList();
+		registration();
 	}
+	
 	
 	void registration(){
 		System.out.println("Welcome to the Point-Of-Sale Registration System");
-		System.out.print("Please enter your user name: ");
-		name = inputScanner.next();
+		do{
+			System.out.print("Please enter your user name: ");
+			name = inputScanner.next();
+		}while(ul.findUserInList(name)==-1);
 		
 	}
 	
-	class Log{
-		Log(String s){
-			System.out.println("<LOG>"+s);
+	
+	
+}
+
+class UserList{
+
+	Scanner userScanner;
+	private String[] nameList;
+	private String[] passwordList;
+	private int noOfUser = 0;
+	UserList(){
+		File userFile = new File("userPasswordFile.txt");
+		try {
+			userScanner = new Scanner(userFile);
+		} catch (FileNotFoundException e) {
+			System.out.println("not find");
 		}
+		
+		// this will get the number of user in the userPasswordFile
+		while(userScanner.hasNextLine()){
+			noOfUser++;
+			userScanner.nextLine();
+		}
+		System.out.println(noOfUser);
+		nameList = new String[noOfUser];
+		passwordList = new String[noOfUser];
+		
+		
+		userScanner.close();
+		try {
+			userScanner = new Scanner(userFile);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		for(int i=0;i<noOfUser;i++){
+			nameList[i]=userScanner.next();
+			passwordList[i]=userScanner.next();
+		}
+	}
+	/** find if the user is in the list
+	 * 
+	 * @param name the userName Entered by user
+	 * @return the position of the userName, if not find, return -1;
+	 */
+	int findUserInList(String name){
+		for(int i=0;i<noOfUser;i++){
+			if(name.equals(nameList[i]))return i;
+		}
+		new Log("Invalid user name!");
+		return -1;
+	}
+	
+}
+
+class Log{
+	Log(String s){
+		System.out.println("<LOG> "+s);
 	}
 }
 
