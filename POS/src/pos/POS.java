@@ -2,29 +2,49 @@ package pos;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public class POS {
-	static boolean batchMode = false;
-	Scanner inputScanner;
-	UserList ul;
-	ProductList pl;
+	private static boolean batchMode = false;
+	private static String inputFile;
+	private Scanner inputScanner;
+	private UserList ul;
+	private ProductList pl;
+	private static int saleID=0;
 	
 	public static void main(String args[]){
-		//if(args[]!=null)batchMode=true;
+		//System.out.println();
+		try{
+			inputFile=args[0];
+			batchMode=true;
+		}catch(Exception e){
+			batchMode=false;
+		}
 		POS thePOS = new POS();
-		thePOS.registration();
-		thePOS.purchasing();
+		try{
+			thePOS.registration();
+			thePOS.purchasing();
+		}catch (NoSuchElementException e){
+			System.out.println("");
+			new Log("No Command Found!");
+		}
 	} 
 	
 	POS(){
-		inputScanner = new Scanner(System.in);
-		ul = new UserList();
-		pl = new ProductList();
+		if(!batchMode)inputScanner = new Scanner(System.in);
+		else
+			try {
+				inputScanner=new Scanner(new File(inputFile));
+			} catch (FileNotFoundException e) {
+				System.out.println("File NOT Find!");
+				System.exit(0);
+			}
+		ul = new UserList(batchMode);
 		
 	}
 	
-	void registration(){
+	void registration() throws NoSuchElementException{
 		String name;
 		String password;
 		int position;
@@ -41,9 +61,30 @@ public class POS {
 		System.out.println("");
 	}
 	
-	void purchasing(){
+	void purchasing() throws NoSuchElementException {
+		System.out.println("---------------------------------------------------");
+		System.out.println("Welcome to the Electronic-Sales Counter!");
+		
+		while(true){
+			if(getCommand()==2)break;
+			pl = new ProductList(batchMode);
+			enterProduct();
+			System.out.println("--------------------------------------------------------");
+			pl.printList();
+			payment();
+			saleID++;
+		}
+		new Log("logoff success!");
+	}
+	
+	String handleSaleID(){
+		if(saleID<10)return "SalesID0"+saleID;
+		else return "SalesID"+saleID;
+	}
+	
+	void enterProduct() throws NoSuchElementException {
 		String id;
-		int number;
+		int number = 0;
 		System.out.println("Please enter a list of purchasing-product ID and number");
 		System.out.println("--------------------------------------------------------");
 		int position;
@@ -52,146 +93,69 @@ public class POS {
 			id = inputScanner.nextLine();
 			position=pl.purchase(id);
 			if(position!=-2&&position!=-1){
-				System.out.print("Product name is "+pl.getName(position)+", enter purchase number: " );
-				number=Integer.parseInt(inputScanner.nextLine());
+				boolean validInput=false;
+				while(!validInput){
+					System.out.print("Product name is "+pl.getName(position)+", enter purchase number: " );
+					try{
+						number=Integer.parseInt(inputScanner.nextLine());
+					}catch(Exception e){
+						number=-1;
+					}
+					if(number>=0)validInput=true;
+					else {
+						new Log("Incorrect Number");
+						if(batchMode)System.exit(0);
+					}
+				}
+				pl.incPurchase(position, number);
 			}
 		}while(position!=-1);
-		// when 
-		
-		
-		
+	}
+	
+	void payment() throws NoSuchElementException {
+		while(true){
+			float paid = 0;
+			boolean validInput=false;
+			while(!validInput){
+				try{
+					paid=Float.parseFloat(inputScanner.nextLine());
+				}catch(NoSuchElementException e){
+					throw e;
+				}catch(Exception e){
+					paid=-1;
+				}
+				if(paid>=0)validInput=true;
+				else{
+					new Log("Invalid Input");
+					if(batchMode)System.exit(0);
+				}
+			}
+			if(paid==0.0){
+				new Log(handleSaleID()+" cancelled!");
+				break;
+			}
+			else if(pl.paying(paid))break;
+			else {
+				new Log("Sorry, cash not enough! ");
+				if(batchMode)System.exit(0);
+			}
+		}
+	}
+	
+	int getCommand() throws NoSuchElementException {
+		int command=0;
+		while(command!=1&&command!=2){
+			System.out.print("Please enter '1' to record sales or '2' to exit:");
+			try{
+				command=Integer.parseInt(inputScanner.nextLine());
+			}catch(Exception e){
+				command=0;
+			}
+			if(command!=1&&command!=2){
+				new Log("Invalid command!");
+				if(batchMode)System.exit(0);
+			}
+		}
+		return command;
 	}
 }
-
-abstract class List{
-	protected int noOfElements;
-	protected Scanner scanner;
-	List(File file){
-		noOfElements = 0;
-		try {
-			scanner = new Scanner(file);
-		} catch (FileNotFoundException e) {
-			System.out.println("not find");
-		}
-		
-		// this will get the number of user in the userPasswordFile
-		while(scanner.hasNextLine()){
-			noOfElements++;
-			scanner.nextLine();
-		}
-		scanner.close();
-	}
-	abstract void assignAttribute();
-}
-
-class UserList extends List{
-
-	private String[] nameList;
-	private String[] passwordList;
-	private static File userFile = new File("userPasswordFile.txt");
-	UserList(){
-		super(userFile);
-		nameList = new String[noOfElements];
-		passwordList = new String[noOfElements];
-		assignAttribute();
-	}
-	/** find if the user is in the list
-	 * 
-	 * @param name the userName Entered by user
-	 * @return the position of the userName, if not find, return -1;
-	 */
-	int findUserInList(String name){
-		for(int i=0;i<noOfElements;i++){
-			if(name.equals(nameList[i]))return i;
-		}
-		new Log("Invalid user name!");
-		return -1;
-	}
-	
-	boolean checkPassword(int i,String password){
-		if(passwordList[i].equals(password)){
-			new Log("Log in success!");
-			return true;
-		}
-		else{
-			new Log("invalid password for "+nameList[i]);
-			return false;
-		}
-	}
-	
-	@Override
-	void assignAttribute() {
-		
-		try {
-			scanner = new Scanner(userFile);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		
-		for(int i=0;i<noOfElements;i++){
-			nameList[i]=scanner.next();
-			passwordList[i]=scanner.next();
-		}
-	}
-}
-
-
-class ProductList extends List{
-
-	private String[] idList;
-	private String[] nameList;
-	private double[] unitPriceList;
-	private int[]    stockList;
-	private static File productFile = new File("productListFile.txt");
-	private int[] purchasedNumberList;
-	
-	ProductList(){
-		super(productFile);
-		idList = new String[noOfElements];
-		nameList = new String[noOfElements];
-		unitPriceList = new double[noOfElements];
-		stockList = new int[noOfElements];
-		purchasedNumberList = new int[noOfElements];
-		assignAttribute();
-	}
-	
-	public String getName(int i){
-		return nameList[i];
-	}
-	
-	public int purchase(String id){
-		if(id.equals("c")){
-			return -1;
-		}
-		for(int i=0;i<noOfElements;i++){
-			if(id.equals(idList[i]))return i;
-		}
-		new Log("item not exsists!");
-		return -2;
-	}
-	
-	@Override
-	void assignAttribute() {
-		
-		try {
-			scanner = new Scanner(productFile);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		
-		for(int i=0;i<noOfElements;i++){
-			idList[i]=scanner.next();
-			nameList[i]=scanner.next();
-			unitPriceList[i]=Double.parseDouble(scanner.next());
-			stockList[i]=Integer.parseInt(scanner.next());
-			purchasedNumberList[i]=0;
-		}
-	}
-}
-
-class Log{
-	Log(String s){
-		System.out.println("<LOG> "+s);
-	}
-}
-
